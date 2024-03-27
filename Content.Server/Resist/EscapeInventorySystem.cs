@@ -1,4 +1,7 @@
 using Content.Server.Popups;
+using Content.Shared.Storage;
+using Content.Shared.Inventory;
+using Content.Shared.Hands.EntitySystems;
 using Content.Server.Storage.Components;
 using Content.Shared.ActionBlocker;
 using Content.Shared.DoAfter;
@@ -19,6 +22,12 @@ public sealed class EscapeInventorySystem : EntitySystem
     [Dependency] private readonly SharedContainerSystem _containerSystem = default!;
     [Dependency] private readonly ActionBlockerSystem _actionBlockerSystem = default!;
     [Dependency] private readonly SharedHandsSystem _handsSystem = default!;
+
+
+    /// <summary>
+    /// You can't escape the hands of an entity this many times more massive than you.
+    /// </summary>
+    public const float MaximumMassDisadvantage = 6f;
 
     public override void Initialize()
     {
@@ -43,37 +52,6 @@ public sealed class EscapeInventorySystem : EntitySystem
             _popupSystem.PopupEntity(Loc.GetString("escape-inventory-component-failed-resisting"), uid, uid);
             return;
         }
-
-        // Contested
-        if (_handsSystem.IsHolding(container.Owner, uid, out _))
-        {
-            AttemptEscape(uid, container.Owner, component);
-            return;
-        }
-
-        // Uncontested
-        if (HasComp<StorageComponent>(container.Owner) || HasComp<InventoryComponent>(container.Owner) || HasComp<SecretStashComponent>(container.Owner))
-            AttemptEscape(uid, container.Owner, component);
-    }
-
-    private void AttemptEscape(EntityUid user, EntityUid container, CanEscapeInventoryComponent component, float multiplier = 1f)
-    {
-        if (component.IsEscaping)
-            return;
-
-        var doAfterEventArgs = new DoAfterArgs(EntityManager, user, component.BaseResistTime * multiplier, new EscapeInventoryEvent(), user, target: container)
-        {
-            BreakOnTargetMove = false,
-            BreakOnUserMove = true,
-            BreakOnDamage = true,
-            NeedHand = false
-        };
-
-        if (!_doAfterSystem.TryStartDoAfter(doAfterEventArgs, out component.DoAfter))
-            return;
-
-        _popupSystem.PopupEntity(Loc.GetString("escape-inventory-component-start-resisting"), user, user);
-        _popupSystem.PopupEntity(Loc.GetString("escape-inventory-component-start-resisting-target"), container, container);
     }
 
     private void OnEscape(EntityUid uid, CanEscapeInventoryComponent component, EscapeInventoryEvent args)
@@ -82,6 +60,8 @@ public sealed class EscapeInventorySystem : EntitySystem
 
         if (args.Handled || args.Cancelled)
             return;
+
+
 
         _containerSystem.AttachParentToContainerOrGrid((uid, Transform(uid)));
         args.Handled = true;

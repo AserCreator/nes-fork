@@ -32,22 +32,22 @@ public sealed partial class ShuttleSystem
      * This is a way to move a shuttle from one location to another, via an intermediate map for fanciness.
      */
 
-    public const float DefaultStartupTime = 5.5f;
-    public const float DefaultTravelTime = 20f;
+    public const float DefaultStartupTime = 5f;
+    public const float DefaultTravelTime = 30f;
     public const float DefaultArrivalTime = 5f;
-    private const float FTLCooldown = 10f;
-    public const float FTLMassLimit = 300f;
+    private const float FTLCooldown = 60f;
+    public const float FTLMassLimit = 1000f;
 
     // I'm too lazy to make CVars.
 
-    private readonly SoundSpecifier _startupSound = new SoundPathSpecifier("/Audio/Effects/Shuttle/hyperspace_begin.ogg")
+    private readonly SoundSpecifier _startupSound = new SoundPathSpecifier("/Audio/NES/Effects/FTL/hyperspace_begin_new.ogg") //NES-changes
     {
-        Params = AudioParams.Default.WithVolume(-5f),
+        Params = AudioParams.Default.WithVolume(5f),
     };
 
-    private readonly SoundSpecifier _arrivalSound = new SoundPathSpecifier("/Audio/Effects/Shuttle/hyperspace_end.ogg")
+    private readonly SoundSpecifier _arrivalSound = new SoundPathSpecifier("/Audio/NES/Effects/FTL/hyperspace_end_new.ogg") //NES-changes
     {
-        Params = AudioParams.Default.WithVolume(-5f),
+        Params = AudioParams.Default.WithVolume(5f),
     };
 
     private readonly TimeSpan _hyperspaceKnockdownTime = TimeSpan.FromSeconds(5);
@@ -371,8 +371,8 @@ public sealed partial class ShuttleSystem
         Enable(uid, component: body);
         _physics.SetLinearVelocity(uid, new Vector2(0f, 20f), body: body);
         _physics.SetAngularVelocity(uid, 0f, body: body);
-        _physics.SetLinearDamping(body, 0f);
-        _physics.SetAngularDamping(body, 0f);
+        _physics.SetLinearDamping(uid, body, 0f);
+        _physics.SetAngularDamping(uid, body, 0f);
 
         _dockSystem.SetDockBolts(uid, true);
         _console.RefreshShuttleConsoles(uid);
@@ -426,8 +426,8 @@ public sealed partial class ShuttleSystem
 
         _physics.SetLinearVelocity(uid, Vector2.Zero, body: body);
         _physics.SetAngularVelocity(uid, 0f, body: body);
-        _physics.SetLinearDamping(body, entity.Comp2.LinearDamping);
-        _physics.SetAngularDamping(body, entity.Comp2.AngularDamping);
+        _physics.SetLinearDamping(uid, body, entity.Comp2.LinearDamping);
+        _physics.SetAngularDamping(uid, body, entity.Comp2.AngularDamping);
 
         var target = entity.Comp1.TargetCoordinates;
 
@@ -471,8 +471,8 @@ public sealed partial class ShuttleSystem
 
         if (_physicsQuery.TryGetComponent(uid, out body))
         {
-            _physics.SetLinearVelocity(uid, Vector2.Zero, body: body);
-            _physics.SetAngularVelocity(uid, 0f, body: body);
+            _physics.SetLinearVelocity(uid, new Vector2(0f, 20f), body: body); //NES-changes
+            _physics.SetAngularVelocity(uid, 1f, body: body);
 
             // Disable shuttle if it's on a planet; unfortunately can't do this in parent change messages due
             // to event ordering and awake body shenanigans (at least for now).
@@ -559,7 +559,7 @@ public sealed partial class ShuttleSystem
 
     private float GetSoundRange(EntityUid uid)
     {
-        if (!_mapManager.TryGetGrid(uid, out var grid))
+        if (!TryComp<MapGridComponent>(uid, out var grid))
             return 4f;
 
         return MathF.Max(grid.LocalAABB.Width, grid.LocalAABB.Height) + 12.5f;
